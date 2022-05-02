@@ -67,6 +67,30 @@ struct MachineID
     NodeID getNum() const { return num; }
 
     bool isValid() const { return type != MachineType_NUM; }
+
+    NodeID toGlobalNodeID() const {
+        return MachineType_base_number(getType()) + getNum();
+    }
+
+    static MachineID fromGlobalNodeID(NodeID id) {
+        // inverse of toGlobalNodeID. Retrieves the global nodeID interval that
+        // the argument belongs to, i.e., it's machine type. Then compute the
+        // ofset of the argument in that interval, i.e., the version of that
+        // machine.
+        auto baseID = 0;
+        auto machineTypeEnd = static_cast<int>(MachineType_NUM);
+        gem5_assert(machineTypeEnd > 0);
+        for (int mt = 0; mt < machineTypeEnd; mt++) {
+            auto mtNext = static_cast<MachineType>(mt+1);
+            auto nextBaseID = MachineType_base_number(mtNext);
+            if (id <= nextBaseID) {
+                return {static_cast<MachineType>(mt), id - baseID};
+            }
+            baseID = nextBaseID;
+        }
+        throw std::runtime_error(
+            "Invalid NodeID for conversion to  MachineID");
+    }
 };
 
 inline std::string

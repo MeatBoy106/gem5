@@ -77,8 +77,6 @@ class BasicExtLink : public BasicLink
   public:
     PARAMS(BasicExtLink);
     BasicExtLink(const Params &p);
-
-    friend class Topology;
 };
 
 class BasicIntLink : public BasicLink
@@ -86,8 +84,6 @@ class BasicIntLink : public BasicLink
   public:
     PARAMS(BasicIntLink);
     BasicIntLink(const Params &p);
-
-    friend class Topology;
 };
 
 } // namespace ruby

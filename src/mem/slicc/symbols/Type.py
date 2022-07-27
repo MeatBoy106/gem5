@@ -50,7 +50,11 @@ class DataMember(Var):
     ):
         super().__init__(symtab, ident, location, type, code, pairs, machine)
         self.init_code = init_code
-        self.real_c_type = self.type.c_ident
+        self.real_c_type = (
+            self.type.c_ident
+            if "external_name" not in self.type
+            else self.type["external_name"]
+        )
         if "template" in pairs:
             self.real_c_type += pairs["template"]
 
@@ -65,7 +69,9 @@ class Enumeration(PairContainer):
 class Type(Symbol):
     def __init__(self, table, ident, location, pairs, machine=None):
         super().__init__(table, ident, location, pairs)
-        self.c_ident = ident
+        self.c_ident = (
+            ident if "external_name" not in pairs else pairs["external_name"]
+        )
         self.abstract_ident = ""
         if machine:
             if self.isExternal or self.isPrimitive:
@@ -234,7 +240,9 @@ class Type(Symbol):
         )
 
         for dm in self.data_members.values():
-            if not dm.type.isPrimitive:
+            if "header" in dm.type:
+                code(f'#include "{dm.type["header"]}"')
+            elif not dm.type.isPrimitive:
                 code('#include "mem/ruby/protocol/$0.hh"', dm.type.c_ident)
 
         parent = ""
@@ -259,29 +267,33 @@ $klass ${{self.c_ident}}$parent
         )
 
         if self.isMessage:
-            code("(Tick curTime) : %s(curTime) {" % self["interface"])
+            code("\t(Tick curTime): %s(curTime)" % self["interface"])
+            firstInitChar = ","
         else:
-            code("()\n\t\t{")
+            code("\t()")
+            firstInitChar = ":"
 
         code.indent()
-        if not self.isGlobal:
-            code.indent()
+        if not self.isGlobal and self.data_members:
+            init = []
             for dm in self.data_members.values():
                 ident = dm.ident
                 if "default" in dm:
                     # look for default value
-                    code(
-                        'm_$ident = ${{dm["default"]}}; // default for this field'
-                    )
+                    init.append(f'm_{ident}{{{dm["default"]}}}')
                 elif "default" in dm.type:
                     # Look for the type default
-                    tid = dm.real_c_type
-                    code('m_$ident = ${{dm.type["default"]}};')
-                    code(" // default value of $tid")
+                    init.append(f'm_{ident}{{{dm.type["default"]}}}')
+                elif "constructor" in dm:
+                    init.append(f'm_{ident}{{{dm["constructor"]}}}')
+                elif "constructor" in dm.type:
+                    init.append(f'm_{ident}{{{dm.type["constructor"]}}}')
                 else:
-                    code("// m_$ident has no default")
+                    init.append(f"m_{ident}{{}}")
+            code.indent()
+            code(firstInitChar + ",\n".join(init) + "\n")
             code.dedent()
-        code("}")
+        code("{}")
 
         # ******** Copy constructor ********
         code("${{self.c_ident}}(const ${{self.c_ident}}&) = default;")
@@ -297,27 +309,29 @@ $klass ${{self.c_ident}}$parent
                 f"const {dm.real_c_type}& local_{dm.ident}"
                 for dm in self.data_members.values()
             ]
-            params = ", ".join(params)
-
             if self.isMessage:
-                params = "const Tick curTime, " + params
+                params.insert(0, "const Tick curTime")
+            params = ", ".join(params)
 
             code("${{self.c_ident}}($params)")
 
-            # Call superclass constructor
+            members = [dm.ident for dm in self.data_members.values()]
+            init = [f"m_{member}{{local_{member}}}" for member in members]
             if "interface" in self:
                 if self.isMessage:
-                    code('    : ${{self["interface"]}}(curTime)')
+                    init.insert(0, f'{self["interface"]}(curTime)')
                 else:
-                    code('    : ${{self["interface"]}}()')
+                    init.insert(0, f'{self["interface"]}()')
+            init = ",\n".join(init)
 
-            code("{")
-            code.indent()
-            for dm in self.data_members.values():
-                code("m_${{dm.ident}} = local_${{dm.ident}};")
+            # Call superclass constructor
 
-            code.dedent()
-            code("}")
+            if init:
+                code(":")
+                code.indent()
+                code(init)
+                code.dedent()
+            code("{}")
 
         # create a clone member
         if self.isMessage:

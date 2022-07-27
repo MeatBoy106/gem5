@@ -143,7 +143,10 @@ class SymbolTable(object):
 
         for symbol in self.sym_vec:
             if isinstance(symbol, Type) and not symbol.isPrimitive:
-                code('#include "mem/ruby/protocol/${{symbol.c_ident}}.hh"')
+                if 'header' in symbol:
+                    code(f'#include "{symbol["header"]}"')
+                else:
+                    code('#include "mem/ruby/protocol/${{symbol.c_ident}}.hh"')
 
         code.write(path, "Types.hh")
 

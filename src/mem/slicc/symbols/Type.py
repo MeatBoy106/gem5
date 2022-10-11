@@ -450,6 +450,7 @@ operator<<(::std::ostream& out, const ${{self.c_ident}}& obj)
 #include <iostream>
 #include <memory>
 
+#include "base/stl_helpers.hh"
 #include "mem/ruby/protocol/${{self.c_ident}}.hh"
 #include "mem/ruby/system/RubySystem.hh"
 
@@ -463,6 +464,7 @@ namespace ruby
 void
 ${{self.c_ident}}::print(std::ostream& out) const
 {
+    using stl_helpers::operator<<;
     out << "[${{self.c_ident}}: ";
 """
         )

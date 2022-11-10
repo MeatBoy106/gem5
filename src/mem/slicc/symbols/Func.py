@@ -64,6 +64,8 @@ class Func(Symbol):
         void_type = self.symtab.find("void", Type)
         if "return_by_ref" in self and self.return_type != void_type:
             return_type += "&"
+        elif "return_by_const_ref" in self and self.return_type != void_type:
+            return_type = f'const {return_type}&'
         elif "return_by_pointer" in self and self.return_type != void_type:
             return_type += "*"
 
@@ -112,6 +114,8 @@ class Func(Symbol):
         return_type = self.return_type.c_ident
         if "return_by_ref" in self and self.return_type != void_type:
             return_type += "&"
+        elif "return_by_const_ref" in self and self.return_type != void_type:
+            return_type = f'const {return_type}&'
         if "return_by_pointer" in self and self.return_type != void_type:
             return_type += "*"
 

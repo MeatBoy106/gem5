@@ -582,7 +582,7 @@ enum ${{self.c_ident}} {
 ${{self.c_ident}} string_to_${{self.c_ident}}(const ::std::string& str);
 
 // Code to convert state to a string
-::std::string ${{self.c_ident}}_to_string(const ${{self.c_ident}}& obj);
+const ::std::string& ${{self.c_ident}}_to_string(const ${{self.c_ident}}& obj);
 
 // Code to increment an enumeration type
 ${{self.c_ident}} &operator++(${{self.c_ident}} &e);
@@ -735,29 +735,24 @@ operator<<(::std::ostream& out, const ${{self.c_ident}}& obj)
 }
 
 // Code to convert state to a string
-std::string
+const std::string&
 ${{self.c_ident}}_to_string(const ${{self.c_ident}}& obj)
 {
-    switch(obj) {
+    static const std::array<std::string, ${{self.c_ident}}_NUM> lut = {
 """
         )
-
-        # For each field
+        code.indent()
         code.indent()
         for enum in self.enums.values():
-            code("  case ${{self.c_ident}}_${{enum.ident}}:")
-            code('    return "${{enum.ident}}";')
+            code('"${{enum.ident}}",')
         code.dedent()
+        code("};")
+        code("return lut.at(obj);")
+        code.dedent()
+        code("}")
 
-        # Trailer
         code(
             """
-      default:
-        panic("Invalid range for type ${{self.c_ident}}");
-    }
-    // Appease the compiler since this function has a return value
-    return "";
-}
 
 // Code to convert from a string to the enumeration
 ${{self.c_ident}}

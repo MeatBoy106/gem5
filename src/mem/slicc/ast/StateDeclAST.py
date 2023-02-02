@@ -65,7 +65,7 @@ class StateDeclAST(DeclAST):
         # Add the implicit State_to_string method - FIXME, this is a bit dirty
         func_id = f"{t.c_ident}_to_string"
 
-        pairs = {"external": "yes"}
+        pairs = {"external": "yes", "return_by_const_ref": "yes"}
         func = Func(
             self.symtab,
             func_id + "_" + t.ident,
